@@ -1,0 +1,26 @@
+{% extends 'portfolio/base.html' %}
+{% block title %}Supprimer {{ cat.nom }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-md-5">
+    <div class="stat-card text-center">
+      <div class="mb-3" style="font-size: 3rem; color: #dc3545;">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+      </div>
+      <h4 class="fw-bold">Supprimer la catégorie</h4>
+      <p class="text-muted">
+        Supprimer <strong>{{ cat.nom }}</strong> ?
+        Impossible si des investissements lui sont rattachés.
+      </p>
+      <form method="post" class="d-flex gap-2 justify-content-center">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger px-4">
+          <i class="bi bi-trash me-2"></i>Supprimer
+        </button>
+        <a href="{% url 'categories' %}" class="btn btn-outline-secondary px-4">Annuler</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

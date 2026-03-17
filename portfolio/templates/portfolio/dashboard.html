@@ -1,0 +1,215 @@
+{% extends 'portfolio/base.html' %}
+{% block title %}Dashboard — Asset Manager Pro{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="fw-bold mb-0" style="color: #1a1a2e;">Tableau de bord</h1>
+    <p class="text-muted mb-0">Vue d'ensemble de votre patrimoine</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'export_csv' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-download me-1"></i>CSV
+    </a>
+    <a href="{% url 'export_pdf' %}" class="btn btn-outline-danger btn-sm">
+      <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+    </a>
+    <a href="{% url 'ajouter' %}" class="btn btn-brand btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Ajouter un actif
+    </a>
+  </div>
+</div>
+
+<!-- ── KPI Cards ── -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card h-100">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-label">Total investi</div>
+          <div class="stat-value text-dark">{{ total_investi|floatformat:0 }} €</div>
+        </div>
+        <div class="stat-icon" style="background:#e8edff;color:#4361ee;"><i class="bi bi-wallet2"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card h-100">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-label">Valeur actuelle</div>
+          <div class="stat-value {% if total_actuel >= total_investi %}text-success{% else %}text-danger{% endif %}">
+            {{ total_actuel|floatformat:0 }} €
+          </div>
+        </div>
+        <div class="stat-icon" style="background:#d4edda;color:#155724;"><i class="bi bi-currency-euro"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card h-100">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-label">Plus-value totale</div>
+          <div class="stat-value {% if plus_value_totale >= 0 %}text-success{% else %}text-danger{% endif %}">
+            {% if plus_value_totale >= 0 %}+{% endif %}{{ plus_value_totale|floatformat:0 }} €
+          </div>
+        </div>
+        <div class="stat-icon" style="background:#fff3cd;color:#856404;"><i class="bi bi-graph-up-arrow"></i></div>
+      </div>
+      <small class="text-muted">
+        {% if performance_globale >= 0 %}
+          <span class="text-success"><i class="bi bi-caret-up-fill"></i> +{{ performance_globale|floatformat:1 }}%</span>
+        {% else %}
+          <span class="text-danger"><i class="bi bi-caret-down-fill"></i> {{ performance_globale|floatformat:1 }}%</span>
+        {% endif %}
+      </small>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card h-100">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-label">Nombre d'actifs</div>
+          <div class="stat-value text-dark">{{ nb_actifs }}</div>
+        </div>
+        <div class="stat-icon" style="background:#f0e6ff;color:#7c3aed;"><i class="bi bi-briefcase"></i></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Répartition + Graphique ── -->
+<div class="row g-3 mb-4">
+  <div class="col-md-5">
+    <div class="stat-card h-100">
+      <h6 class="fw-bold mb-3">Répartition par catégorie</h6>
+      {% for item in repartition %}
+      <div class="mb-3">
+        <div class="d-flex justify-content-between mb-1">
+          <span>
+            <i class="bi {{ item.categorie.icone }} text-{{ item.categorie.couleur }}"></i>
+            {{ item.nom }}
+          </span>
+          <span class="fw-semibold">{{ item.pct }}%</span>
+        </div>
+        <div class="progress" style="height: 8px;">
+          <div class="progress-bar bg-{{ item.categorie.couleur }}" style="width: {{ item.pct }}%"></div>
+        </div>
+        <small class="text-muted">{{ item.valeur|floatformat:0 }} €</small>
+      </div>
+      {% empty %}
+      <p class="text-muted">Aucun actif pour l'instant.</p>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="col-md-7">
+    <div class="stat-card h-100 d-flex flex-column align-items-center justify-content-center">
+      <h6 class="fw-bold mb-3 align-self-start">Graphique de répartition</h6>
+      <canvas id="doughnutChart" style="max-height: 280px;"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tableau des actifs ── -->
+<div class="table-card mb-4">
+  <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+    <h6 class="fw-bold mb-0">Détail des investissements</h6>
+    <a href="{% url 'api_actifs' %}" target="_blank" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-braces me-1"></i>Voir API JSON
+    </a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Actif</th>
+          <th>Catégorie</th>
+          <th>Date</th>
+          <th class="text-end">Prix achat</th>
+          <th class="text-end">Quantité</th>
+          <th class="text-end">Valeur achat</th>
+          <th class="text-end">Valeur actuelle</th>
+          <th class="text-center">Performance</th>
+          <th class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in investissements %}
+        <tr>
+          <td class="fw-semibold">{{ inv.nom }}</td>
+          <td>
+            <span class="badge bg-{{ inv.categorie.couleur }} bg-opacity-10 text-{{ inv.categorie.couleur }} border border-{{ inv.categorie.couleur }}">
+              <i class="bi {{ inv.categorie.icone }}"></i> {{ inv.categorie.nom }}
+            </span>
+          </td>
+          <td class="text-muted">{{ inv.date_acquisition|date:"d/m/Y" }}</td>
+          <td class="text-end">{{ inv.prix_achat|floatformat:2 }} €</td>
+          <td class="text-end">{{ inv.quantite }}</td>
+          <td class="text-end">{{ inv.valeur_achat|floatformat:2 }} €</td>
+          <td class="text-end fw-semibold">{{ inv.valeur_actuelle|floatformat:2 }} €</td>
+          <td class="text-center">
+            {% with perf=inv.performance %}
+              {% if inv.est_en_hausse %}
+                <span class="perf-badge perf-up">↑ +{{ perf|floatformat:1 }}%</span>
+              {% elif perf < 0 %}
+                <span class="perf-badge perf-down">↓ {{ perf|floatformat:1 }}%</span>
+              {% else %}
+                <span class="perf-badge perf-neutral">→ {{ perf|floatformat:1 }}%</span>
+              {% endif %}
+            {% endwith %}
+          </td>
+          <td class="text-center">
+            <a href="{% url 'modifier' inv.pk %}" class="btn btn-sm btn-outline-primary me-1" title="Modifier">
+              <i class="bi bi-pencil"></i>
+            </a>
+            <a href="{% url 'supprimer' inv.pk %}" class="btn btn-sm btn-outline-danger" title="Supprimer">
+              <i class="bi bi-trash"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9" class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+            Aucun actif. <a href="{% url 'ajouter' %}">Ajoutez votre premier investissement</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const repartition = {{ repartition|safe }};
+
+// Sérialise les données depuis le contexte Django
+const labels = [{% for item in repartition %}"{{ item.nom }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+const values = [{% for item in repartition %}{{ item.pct }}{% if not forloop.last %},{% endif %}{% endfor %}];
+const colors = ['#4361ee','#f72585','#4cc9f0','#7209b7','#3a0ca3','#4895ef','#560bad'];
+
+new Chart(document.getElementById('doughnutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: labels,
+    datasets: [{
+      data: values,
+      backgroundColor: colors.slice(0, labels.length),
+      borderWidth: 2,
+      borderColor: '#fff',
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 15, font: { size: 12 } } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}%` } }
+    },
+    cutout: '65%',
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends 'portfolio/base.html' %}
+{% block title %}{{ titre }} — Asset Manager Pro{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div>
+    <h1 class="fw-bold mb-0" style="color: #1a1a2e;">{{ titre }}</h1>
+    <p class="text-muted mb-0">Remplissez les informations de l'actif</p>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="stat-card">
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="row g-3">
+          <div class="col-md-8">
+            <label class="form-label fw-semibold">{{ form.nom.label }}</label>
+            {{ form.nom }}
+            {% if form.nom.errors %}<div class="text-danger small mt-1">{{ form.nom.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">{{ form.categorie.label }}</label>
+            {{ form.categorie }}
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">{{ form.prix_achat.label }}</label>
+            {{ form.prix_achat }}
+            {% if form.prix_achat.errors %}<div class="text-danger small mt-1">{{ form.prix_achat.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">{{ form.quantite.label }}</label>
+            {{ form.quantite }}
+            {% if form.quantite.errors %}<div class="text-danger small mt-1">{{ form.quantite.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">{{ form.date_acquisition.label }}</label>
+            {{ form.date_acquisition }}
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">
+              {{ form.prix_marche.label }}
+              <span class="badge bg-info text-dark ms-1" style="font-size:0.7rem;">Pour le calcul de performance</span>
+            </label>
+            {{ form.prix_marche }}
+            <div class="form-text">Laissez vide si vous ne connaissez pas le prix actuel.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">{{ form.dividende.label }}</label>
+            {{ form.dividende }}
+            <div class="form-text">Uniquement pour les actions. Laissez 0 sinon.</div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">{{ form.notes.label }}</label>
+            {{ form.notes }}
+          </div>
+        </div>
+
+        <!-- Calculateur dynamique -->
+        <div class="mt-4 p-3 rounded" style="background: #f0f4ff;" id="calc-preview">
+          <h6 class="fw-bold text-primary mb-2"><i class="bi bi-calculator me-2"></i>Aperçu en temps réel</h6>
+          <div class="row text-center">
+            <div class="col-4">
+              <div class="small text-muted">Valeur d'achat</div>
+              <div class="fw-bold" id="preview-valeur-achat">—</div>
+            </div>
+            <div class="col-4">
+              <div class="small text-muted">Valeur actuelle</div>
+              <div class="fw-bold" id="preview-valeur-actuelle">—</div>
+            </div>
+            <div class="col-4">
+              <div class="small text-muted">Performance</div>
+              <div class="fw-bold" id="preview-perf">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+          <button type="submit" class="btn btn-brand px-4">
+            <i class="bi bi-check-lg me-2"></i>Enregistrer
+          </button>
+          <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary px-4">Annuler</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function updatePreview() {
+    const prix = parseFloat(document.querySelector('[name=prix_achat]').value) || 0;
+    const qte  = parseFloat(document.querySelector('[name=quantite]').value) || 0;
+    const marche = parseFloat(document.querySelector('[name=prix_marche]').value) || 0;
+
+    const valAchat = prix * qte;
+    const valActuelle = marche ? marche * qte : valAchat;
+    const perf = prix ? ((marche - prix) / prix * 100) : 0;
+
+    document.getElementById('preview-valeur-achat').textContent =
+      valAchat ? valAchat.toFixed(2) + ' €' : '—';
+    document.getElementById('preview-valeur-actuelle').textContent =
+      valActuelle ? valActuelle.toFixed(2) + ' €' : '—';
+
+    if (marche && prix) {
+      const el = document.getElementById('preview-perf');
+      el.textContent = (perf >= 0 ? '+' : '') + perf.toFixed(2) + '%';
+      el.className = 'fw-bold ' + (perf > 10 ? 'text-success' : perf < 0 ? 'text-danger' : 'text-warning');
+    } else {
+      document.getElementById('preview-perf').textContent = '—';
+    }
+  }
+
+  ['prix_achat', 'quantite', 'prix_marche'].forEach(name => {
+    document.querySelector(`[name=${name}]`).addEventListener('input', updatePreview);
+  });
+  updatePreview();
+</script>
+{% endblock %}
